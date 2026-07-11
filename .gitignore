@@ -1,0 +1,6 @@
+.env
+
+# Go build output
+backend/backend
+*.exe
+*.test
