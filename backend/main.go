@@ -2,11 +2,13 @@ package main
 
 import (
 	"log"
-	"time"
 	"os"
+	"time"
+
+	"backend/cronjobs"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/joho/godotenv"
-
 )
 func main(){
 	err := godotenv.Load()
@@ -21,7 +23,7 @@ func main(){
 		if sess != nil {
 			
 		}
-	
+	cronjobs.GrabPortfolio()
 
 	now := time.Now().Format("15:04:05")	
 	log.Print("hi" + now)
