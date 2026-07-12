@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -21,10 +20,54 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type Stock struct {
+	Symbol    string
+	Units     float64
+	Price     float64
+	CostBasis float64
+	Value     float64
+}
+
 func GrabPortfolio(
 // sess *discordgo.Session, message *discordgo.MessageCreate
 ) {
 	now := time.Now().Format("15:04:05")
+
+	total, stockList := fetchTotalPriceAndStockList()
+	fmt.Print(total)
+	fmt.Print(stockList)
+
+	if now == "09:00:00" {
+		// fetch macquarie
+		// fetch portfolio
+
+		// daily increase of each $% 
+
+		// curr price of holding | done
+		// total $% | done 
+	}
+
+}
+
+func totalValueIncrease(stock Stock) (float64, float64) {
+	dollar := (stock.Price - stock.CostBasis) * stock.Units
+	percen := ((stock.Price - stock.CostBasis) / stock.CostBasis) * 100
+	return dollar, percen
+}
+
+func fetchTotalPriceAndStockList() (float64, []Stock) {
+
+	var data struct {
+		Results []struct {
+			Instrument struct {
+				RawSymbol string `json:"raw_symbol"`
+			}
+			Units     string
+			Price     string
+			CostBasis string `json:"cost_basis"`
+		}
+	}
+
 	err := godotenv.Load()
 
 	if err != nil {
@@ -35,11 +78,45 @@ func GrabPortfolio(
 	query.Set("clientId", os.Getenv("SNAPTRADE_CLIENT_ID"))
 	query.Set("timestamp", strconv.FormatInt(time.Now().Unix(), 10))
 	rawQuery := query.Encode()
-	req, _ := http.NewRequest(http.MethodGet, "https://api.snaptrade.com/api/v1/accounts?"+rawQuery, nil)
+	req, _ := http.NewRequest(http.MethodGet, "https://api.snaptrade.com/api/v1/accounts/"+os.Getenv("STAKE_ID")+"/positions/all?"+rawQuery, nil)
+
+	signature := createSignature(nil, "/api/v1/accounts/"+os.Getenv("STAKE_ID")+"/positions/all", rawQuery)
+
+	req.Header.Set("Signature", signature)
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+
+	resp, err := client.Do(req)
+
+	json.NewDecoder(resp.Body).Decode(&data)
+
+	total := 0.0
+	var stockList []Stock
+
+	for _, stock := range data.Results {
+		units, _ := strconv.ParseFloat(stock.Units, 64)
+		price, _ := strconv.ParseFloat(stock.Price, 64)
+		costBasis, _ := strconv.ParseFloat(stock.CostBasis, 64)
+		value := units * price
+
+		stockList = append(stockList, Stock{
+			Symbol:    stock.Instrument.RawSymbol,
+			Units:     units,
+			Price:     price,
+			CostBasis: costBasis,
+			Value:     value,
+		})
+		total += value
+	}
+
+	return total, stockList
+}
+
+func createSignature(content any, path string, query string) string {
 	sigObject := map[string]interface{}{
-		"content": nil,
-		"path":    "/api/v1/accounts",
-		"query":   rawQuery,
+		"content": content,
+		"path":    path,
+		"query":   query,
 	}
 
 	var buf bytes.Buffer
@@ -57,32 +134,5 @@ func GrabPortfolio(
 	mac.Write([]byte(strings.TrimSuffix(buf.String(), "\n")))
 
 	signature := base64.StdEncoding.EncodeToString(mac.Sum(nil))
-
-	req.Header.Set("Signature", signature)
-	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
-
-	resp, err := client.Do(req)
-
-	fmt.Print(resp)
-	body, _ := io.ReadAll(resp.Body)
-	fmt.Println("status:", resp.Status)
-	fmt.Println("body:", string(body))
-
-
-
-
-
-
-
-
-	if now == "09:00:00" {
-		// fetch macquarie
-		// fetch portfolio
-
-		// daily increase of each
-		// total
-
-	}
-
+	return signature
 }

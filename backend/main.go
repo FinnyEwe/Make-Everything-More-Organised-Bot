@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"os"
-	"time"
 
 	"backend/cronjobs"
 
@@ -25,7 +24,5 @@ func main(){
 		}
 	cronjobs.GrabPortfolio()
 
-	now := time.Now().Format("15:04:05")	
-	log.Print("hi" + now)
 
 }
