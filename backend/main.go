@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"os/signal"
 
 	"backend/cronjobs"
 
@@ -17,12 +18,14 @@ func main(){
 		log.Fatal(err)
 	}
 
-		// sess.AddHandler()
+	if err := sess.Open(); err != nil {
+		log.Fatal(err)
+	}
+	defer sess.Close()
 
-		if sess != nil {
-			
-		}
-	cronjobs.GrabPortfolio()
-
+	cronjobs.GrabPortfolio(sess)
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, os.Interrupt)
+	<-sc
 
 }

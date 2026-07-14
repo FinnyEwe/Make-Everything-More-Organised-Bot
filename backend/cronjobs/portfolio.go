@@ -13,9 +13,10 @@ import (
 	"strings"
 	"time"
 
-	// "github.com/bwmarrin/discordgo"
 	"encoding/json"
 	"net/url"
+
+	"github.com/bwmarrin/discordgo"
 
 	"github.com/joho/godotenv"
 )
@@ -29,55 +30,117 @@ type Stock struct {
 }
 
 type DailyIncrease struct {
-	Change float64
+	Change        float64
 	ChangePercent float64 `json:"change_p"`
-	Close float64
-	Code string
-	GmtOffset float64
-	High float64
-	Low float64
-	Open float64
+	Close         float64
+	Code          string
+	GmtOffset     float64
+	High          float64
+	Low           float64
+	Open          float64
 	PreviousClose float64
-	Timestamp float64
-	Volume float64
+	Timestamp     float64
+	Volume        float64
 }
 
-func GrabPortfolio(
-// sess *discordgo.Session, message *discordgo.MessageCreate
-) {
-	now := time.Now().Format("15:04:05")
+func GrabPortfolio(sess *discordgo.Session) {
+	// now := time.Now().Format("15:04:05")
 
 	total, stockList := fetchTotalPriceAndStockList()
 
-	if total < 0 {
-		fmt.Print(total)
-	}
 	var tickerSymbols []string
-
 	for _, stock := range stockList {
-		tickerSymbols = append(tickerSymbols, stock.Symbol + ".AU")
+		tickerSymbols = append(tickerSymbols, stock.Symbol+".AU")
 	}
 
-	dailyIncrease(tickerSymbols)
-	
-
-	if now == "09:00:00" {
-		// fetch macquarie
-		// fetch portfolio
-
-		// daily increase of each $% 
-
-		// curr price of holding | done
-		// total $% | done 
-
-
+	increases := dailyIncrease(tickerSymbols)
+	if increases == nil {
+		log.Fatal("No daily increases found")
 	}
 
+	message := formatPortfolioMessage(total, stockList, increases)
+	fmt.Println(message)
+
+	channelID := os.Getenv("DISCORD_CHANNEL_ID")
+	if channelID == "" {
+		log.Println("DISCORD_CHANNEL_ID not set, printing message:")
+		fmt.Println(message)
+		return
+	}
+	_, err := sess.ChannelMessageSend(channelID, message)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
-func dailyIncrease(symbolList []string) {
+func formatPortfolioMessage(total float64, stockList []Stock, increases map[string]float64) string {
+	var b strings.Builder
+
+	totalDailyDollar := 0.0
+	for _, stock := range stockList {
+		p := increases[stock.Symbol]
+		dailyDollar := stock.Value - stock.Value/(1+p/100)
+		totalDailyDollar += dailyDollar
+
+		b.WriteString(fmt.Sprintf(
+			"**%s**  %s  `$%+.2f (%+.2f%%)`\n",
+			stock.Symbol,
+			formatWholeDollars(stock.Value),
+			dailyDollar,
+			p,
+		))
+	}
+
+	totalDailyPercent := 0.0
+	if startValue := total - totalDailyDollar; startValue != 0 {
+		totalDailyPercent = (totalDailyDollar / startValue) * 100
+	}
+
+	b.WriteString(fmt.Sprintf(
+		"**Total** %s · `$%+.2f (%+.2f%%)`\n",
+		formatWholeDollars(total),
+		totalDailyDollar,
+		totalDailyPercent,
+	))
+
+	return b.String()
+}
+
+func formatWholeDollars(amount float64) string {
+	return "$" + formatCommas(fmt.Sprintf("%.0f", amount))
+}
+
+func formatCommas(s string) string {
+	parts := strings.Split(s, ".")
+	intPart := parts[0]
+
+	negative := strings.HasPrefix(intPart, "-")
+	if negative {
+		intPart = intPart[1:]
+	}
+
+	var b strings.Builder
+	for i, c := range intPart {
+		if i > 0 && (len(intPart)-i)%3 == 0 {
+			b.WriteRune(',')
+		}
+		b.WriteRune(c)
+	}
+
+	result := b.String()
+	if negative {
+		result = "-" + result
+	}
+	if len(parts) > 1 {
+		result += "." + parts[1]
+	}
+
+	return result
+}
+
+func dailyIncrease(symbolList []string) map[string]float64 {
 	if len(symbolList) == 0 {
-		return
+		return nil
 	}
 
 	rawQuery := url.Values{}
@@ -93,9 +156,19 @@ func dailyIncrease(symbolList []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer resp.Body.Close()
+
 	var data []DailyIncrease
-	json.NewDecoder(resp.Body).Decode(&data)
-	fmt.Print(data)
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Fatal(err)
+	}
+
+	increases := make(map[string]float64)
+	for _, stock := range data {
+		increases[strings.Split(stock.Code, ".")[0]] = stock.ChangePercent
+	}
+
+	return increases
 }
 
 func totalValueIncrease(stock Stock) (float64, float64) {
