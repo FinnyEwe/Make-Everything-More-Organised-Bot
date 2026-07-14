@@ -5,15 +5,16 @@ import (
 	"os"
 	"os/signal"
 
-	"backend/cronjobs"
+	"backend/internal/config"
+	"backend/internal/discord"
 
-	"github.com/bwmarrin/discordgo"
-	"github.com/joho/godotenv"
+	discordgo "github.com/bwmarrin/discordgo"
 )
-func main(){
-	err := godotenv.Load()
-	token := os.Getenv("DISCORD_TOKEN")
-	sess, err := discordgo.New(token)
+
+func main() {
+	cfg := config.Load()
+
+	sess, err := discordgo.New(cfg.DiscordToken)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,9 +24,9 @@ func main(){
 	}
 	defer sess.Close()
 
-	cronjobs.GrabPortfolio(sess)
+	discord.GrabPortfolio(sess, cfg)
+
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, os.Interrupt)
 	<-sc
-
 }
