@@ -28,14 +28,38 @@ type Stock struct {
 	Value     float64
 }
 
+type DailyIncrease struct {
+	Change float64
+	ChangePercent float64 `json:"change_p"`
+	Close float64
+	Code string
+	GmtOffset float64
+	High float64
+	Low float64
+	Open float64
+	PreviousClose float64
+	Timestamp float64
+	Volume float64
+}
+
 func GrabPortfolio(
 // sess *discordgo.Session, message *discordgo.MessageCreate
 ) {
 	now := time.Now().Format("15:04:05")
 
 	total, stockList := fetchTotalPriceAndStockList()
-	fmt.Print(total)
-	fmt.Print(stockList)
+
+	if total < 0 {
+		fmt.Print(total)
+	}
+	var tickerSymbols []string
+
+	for _, stock := range stockList {
+		tickerSymbols = append(tickerSymbols, stock.Symbol + ".AU")
+	}
+
+	dailyIncrease(tickerSymbols)
+	
 
 	if now == "09:00:00" {
 		// fetch macquarie
@@ -45,8 +69,33 @@ func GrabPortfolio(
 
 		// curr price of holding | done
 		// total $% | done 
+
+
 	}
 
+}
+
+func dailyIncrease(symbolList []string) {
+	if len(symbolList) == 0 {
+		return
+	}
+
+	rawQuery := url.Values{}
+	rawQuery.Set("api_token", os.Getenv("EODHD_API_KEY"))
+	if len(symbolList) > 1 {
+		rawQuery.Set("s", strings.Join(symbolList[1:], ","))
+	}
+	rawQuery.Set("fmt", "json")
+
+	req, _ := http.NewRequest(http.MethodGet, "https://eodhd.com/api/real-time/"+symbolList[0]+"?"+rawQuery.Encode(), nil)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var data []DailyIncrease
+	json.NewDecoder(resp.Body).Decode(&data)
+	fmt.Print(data)
 }
 
 func totalValueIncrease(stock Stock) (float64, float64) {
