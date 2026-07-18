@@ -13,7 +13,6 @@ import (
 
 func main() {
 	cfg := config.Load()
-
 	sess, err := discordgo.New(cfg.DiscordToken)
 	if err != nil {
 		log.Fatal(err)
