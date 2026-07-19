@@ -1,21 +1,16 @@
 package db
 
 import (
-
 	"os"
-
+	"backend/internal/model" 
+	"github.com/joho/godotenv"
 	"gorm.io/gorm"
 )
 
-type Savings struct {
-	id string
-	amount float64
-}
 
 func Setup(db gorm.DB) {
-
+	godotenv.Load()
 	db.Migrator().DropTable()
-	db.AutoMigrate(&Savings{})
-
-	db.Create(&Savings{os.Getenv("AMOUNT_ID"), 0.00})
+	db.AutoMigrate(&model.Savings{})
+	db.Create(&model.Savings{Id: os.Getenv("AMOUNT_ID"), Amount: 0.00})
 }

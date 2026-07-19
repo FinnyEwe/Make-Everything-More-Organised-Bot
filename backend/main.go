@@ -1,18 +1,26 @@
 package main
 
 import (
+	"backend/internal/config"
+	"backend/internal/discord"
 	"log"
 	"os"
 	"os/signal"
 
-	"backend/internal/config"
-	"backend/internal/discord"
-
-	discordgo "github.com/bwmarrin/discordgo"
+	"github.com/bwmarrin/discordgo"
+	"github.com/joho/godotenv"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 func main() {
 	cfg := config.Load()
+	godotenv.Load()
+	dsn := os.Getenv("DATABASE_URL")
+    db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+
+	print(db)
+
 	sess, err := discordgo.New(cfg.DiscordToken)
 	if err != nil {
 		log.Fatal(err)
