@@ -1,13 +1,15 @@
 package portfolio
 
 import (
+	"fmt"
 	"log"
 
 	"backend/internal/clients"
 	"backend/internal/config"
+	"backend/internal/store"
 )
 
-func BuildMessage(cfg *config.Config) string {
+func BuildStockMessage(cfg *config.Config) string {
 	total, stockList := clients.FetchPositions(cfg)
 
 	var tickerSymbols []string
@@ -23,8 +25,17 @@ func BuildMessage(cfg *config.Config) string {
 	return FormatMessage(total, stockList, increases)
 }
 
-func TotalValueIncrease(stock clients.Stock) (float64, float64) {
-	dollar := (stock.Price - stock.CostBasis) * stock.Units
-	percen := ((stock.Price - stock.CostBasis) / stock.CostBasis) * 100
-	return dollar, percen
+func BuildTotalMessage(cfg *config.Config, st *store.Store) string {
+	total, _ := clients.FetchPositions(cfg)
+	savings := st.GetSavings()
+
+	grandTotal := total + savings.Amount
+	// 4. Format the message
+	message := fmt.Sprintf("**Total**: `$%.2f`\n**Savings**: `$%.2f`\n**Stocks**: `$%.2f`",
+		grandTotal,
+		savings.Amount,
+		total,
+	)
+
+	return message
 }
