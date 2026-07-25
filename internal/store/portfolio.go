@@ -3,9 +3,7 @@ package store
 import (
 	"fmt"
 	"os"
-
 	"backend/internal/model"
-
 	"gorm.io/gorm"
 )
 
@@ -39,8 +37,7 @@ func (s *Store) UpdateSavings(operand Operand, amount float64) (model.Savings, e
 	switch operand {
 	case OperandAdd:
 		operatorSymb = "+"
-	case OperandSub:
-		operatorSymb = "-"
+	case OperandSub: 
 	default:
 		return savings, fmt.Errorf("unknown operand: %s", operand)
 	}

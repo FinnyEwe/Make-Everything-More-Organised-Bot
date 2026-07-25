@@ -1,6 +1,7 @@
 .env
 
 # Go build output
-backend/backend
+/DiscordBot
+/backend
 *.exe
 *.test
