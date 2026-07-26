@@ -15,6 +15,7 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/passiv/snaptrade-sdks/sdks/go v1.0.185 // indirect
+	github.com/rabbitmq/amqp091-go v1.13.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20210323180902-22b0adad7558 // indirect

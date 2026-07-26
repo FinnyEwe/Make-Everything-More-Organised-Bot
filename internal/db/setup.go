@@ -12,5 +12,7 @@ func Setup(db gorm.DB) {
 	godotenv.Load()
 	db.Migrator().DropTable()
 	db.AutoMigrate(&model.Savings{})
+	db.AutoMigrate(&model.Reminder{})
 	db.Create(&model.Savings{Id: os.Getenv("AMOUNT_ID"), Amount: 0.00})
 }
+
