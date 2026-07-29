@@ -42,12 +42,16 @@ func FetchDailyIncrease(cfg *config.Config, symbolList []string) map[string]floa
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println(json.Marshal(resp))
+
 	defer resp.Body.Close()
 
 	var data []DailyIncrease
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		log.Fatal(err)
 	}
+
+	
 
 	increases := make(map[string]float64)
 	for _, stock := range data {

@@ -23,9 +23,14 @@ func (s *Store) PollReminders() ([]model.Reminder, error) {
 
 func (s *Store) GetReminders() ([]model.Reminder, error) {
 	var reminders []model.Reminder
-    err := s.Db.Find(&reminders).Error
-    return reminders, err
+	err := s.Db.Find(&reminders).Error
+	return reminders, err
 }
 
+func (s *Store) UpdateNotification(id uint, channel string) error {
+	err := s.Db.Model(&model.Savings{}).
+		Where("id = ?", id).
+		Update(channel, true).Error
 
-
+	return err
+}
