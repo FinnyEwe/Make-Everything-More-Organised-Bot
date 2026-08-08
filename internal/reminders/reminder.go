@@ -184,7 +184,7 @@ func SendCal(messages  <-chan amqp.Delivery, s *store.Store){
 
 func CreateQueueConnection() (*amqp.Channel, error) {
 	godotenv.Load()
-	conn, err := amqp.Dial(fmt.Sprintf("amqp://guest1:%s@localhost:5672/", os.Getenv("RABBITMQ_PASS")))
+	conn, err := amqp.Dial(fmt.Sprintf("amqp://guest1:%s@127.0.0.1:5672/", os.Getenv("RABBITMQ_PASS")))
 	failOnError(err, "failed to connect to RabbitMQ")
 
 	ch, err := conn.Channel()
