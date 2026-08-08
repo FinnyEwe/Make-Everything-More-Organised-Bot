@@ -113,7 +113,6 @@ func SendDiscord(messages <-chan amqp.Delivery, s *store.Store, sess *discordgo.
 			continue
 		}
 
-		// only tick off when the reminder is for today
 		if time.Now().In(loc).Format("02-01-2006") == reminder.Date {
 			s.Db.Model(&model.Reminder{}).Where("id = ?", id).Update("discord", true)
 		}
