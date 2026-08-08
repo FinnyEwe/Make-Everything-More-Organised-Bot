@@ -67,6 +67,16 @@ func main() {
 		reminders.QueueNotifications(st, ch)
 	})
 
+	// Cleanup completed reminders at 9:00 AM (after processing)
+	c.AddFunc("0 9 * * *", func() {
+		log.Println("Cleaning up completed reminders...")
+		if err := st.DeleteCompletedReminders(); err != nil {
+			log.Printf("Failed to delete completed reminders: %v", err)
+		} else {
+			log.Println("Successfully cleaned up completed reminders")
+		}
+	})
+
 	c.Start()
 	defer c.Stop()
 

@@ -34,3 +34,10 @@ func (s *Store) UpdateNotification(id uint, channel string) error {
 
 	return err
 }
+
+func (s *Store) DeleteCompletedReminders() error {
+	// Delete reminders where both discord and gcal are true (fully processed)
+	err := s.Db.Where("discord = ? AND gcal = ?", true, true).
+		Delete(&model.Reminder{}).Error
+	return err
+}
