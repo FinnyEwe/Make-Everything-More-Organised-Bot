@@ -189,7 +189,6 @@ func CreateQueueConnection() (*amqp.Channel, error) {
 
 	ch, err := conn.Channel()
 	failOnError(err, "Failed to open a channel")
-	defer ch.Close()
 	return ch, err
 
 }
