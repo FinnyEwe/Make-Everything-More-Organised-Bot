@@ -15,9 +15,14 @@ func (s *Store) CreateReminder(description string, date string) {
 
 func (s *Store) PollReminders() ([]model.Reminder, error) {
 	var reminders []model.Reminder
-	currDate := time.Now().Format("02-01-2006")
-	tmr := time.Now().AddDate(1, 0, 0).Format("02-01-2006")
-	err := s.Db.Where("date = ?", currDate).Or("date = ?", tmr).Find(&reminders).Error
+	loc, err := time.LoadLocation("Australia/Sydney")
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().In(loc)
+	currDate := now.Format("02-01-2006")
+	tmr := now.AddDate(0, 0, 1).Format("02-01-2006")
+	err = s.Db.Where("date = ?", currDate).Or("date = ?", tmr).Find(&reminders).Error
 	return reminders, err
 }
 

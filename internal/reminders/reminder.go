@@ -121,65 +121,74 @@ func SendDiscord(messages <-chan amqp.Delivery, s *store.Store, sess *discordgo.
 	}
 }
 
-func SendCal(messages  <-chan amqp.Delivery, s *store.Store){
-
+func SendCal(messages <-chan amqp.Delivery, s *store.Store) {
 	svc, err := clients.NewCalendarService(context.Background())
-		if err != nil {
-			log.Fatal(err)
-		}
-		
+	if err != nil {
+		log.Printf("gcal: calendar service failed: %v", err)
+		return
+	}
+
+	loc, err := time.LoadLocation("Australia/Sydney")
+	if err != nil {
+		log.Printf("gcal: load location failed: %v", err)
+		return
+	}
+
 	for d := range messages {
 		var id uint
-		json.Unmarshal(d.Body, &id)
-		//send to gcal
+		if err := json.Unmarshal(d.Body, &id); err != nil {
+			log.Printf("gcal: bad message body: %v", err)
+			d.Nack(false, false)
+			continue
+		}
 
 		var reminder model.Reminder
+		if err := s.Db.Where("id = ?", id).First(&reminder).Error; err != nil {
+			log.Printf("gcal: reminder %d not found: %v", id, err)
+			d.Nack(false, false)
+			continue
+		}
 
-
-		s.Db.Where("id = ?", id).First(&reminder)
-
-		loc, err := time.LoadLocation("Australia/Sydney")
-		if err != nil {
-			log.Fatal(err)
+		if reminder.Gcal {
+			d.Ack(false)
+			continue
 		}
 
 		day, err := time.ParseInLocation("02-01-2006", reminder.Date, loc)
 		if err != nil {
-			log.Printf("bad date %q: %v", reminder.Date, err)
+			log.Printf("gcal: bad date %q: %v", reminder.Date, err)
 			d.Nack(false, false)
 			continue
 		}
-		
+
 		start := time.Date(day.Year(), day.Month(), day.Day(), 8, 30, 0, 0, loc)
+		end := start.Add(30 * time.Minute)
 
 		event := &calendar.Event{
 			Summary: reminder.Description,
 			Start: &calendar.EventDateTime{
-				DateTime: start.Format(time.RFC3339), 
+				DateTime: start.Format(time.RFC3339),
 				TimeZone: "Australia/Sydney",
 			},
 			End: &calendar.EventDateTime{
-				DateTime: start.Format(time.RFC3339),
+				DateTime: end.Format(time.RFC3339),
 				TimeZone: "Australia/Sydney",
 			},
 		}
 		created, err := svc.Events.Insert("primary", event).Do()
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("gcal: insert failed for reminder %d: %v", id, err)
+			d.Nack(false, true)
+			continue
 		}
-		fmt.Println(created.Id, created.HtmlLink)
+		log.Printf("gcal: created event %s %s", created.Id, created.HtmlLink)
 
-
-		// tick off in db
-		
-		if time.Now().In(loc).Equal(day) {
-			s.Db.Where("id = ?", id).Update("gcal", true)
+		if time.Now().In(loc).Format("02-01-2006") == reminder.Date {
+			s.Db.Model(&model.Reminder{}).Where("id = ?", id).Update("gcal", true)
 		}
-		
 
-
-	d.Ack(false)
-}
+		d.Ack(false)
+	}
 }
 
 func CreateQueueConnection() (*amqp.Channel, error) {

@@ -235,14 +235,18 @@ func handleListReminders(s *discordgo.Session, i *discordgo.InteractionCreate, s
 	builder.WriteString("📝 **Your Reminders:**\n\n")
 
 	for _, reminder := range reminders {
-		status := "⏰ Pending"
+		discordStatus := "⏰ Discord pending"
 		if reminder.Discord {
-			status = "✅ Sent to Discord"
+			discordStatus = "✅ Sent to Discord"
 		}
-		
+		gcalStatus := "⏰ Calendar pending"
+		if reminder.Gcal {
+			gcalStatus = "✅ Added to Google Calendar"
+		}
+
 		builder.WriteString(fmt.Sprintf("**#%d** - %s\n", reminder.ID, reminder.Date))
 		builder.WriteString(fmt.Sprintf("📄 %s\n", reminder.Description))
-		builder.WriteString(fmt.Sprintf("📊 %s\n\n", status))
+		builder.WriteString(fmt.Sprintf("📊 %s · %s\n\n", discordStatus, gcalStatus))
 	}
 
 	content := builder.String()
