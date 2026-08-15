@@ -77,6 +77,16 @@ func main() {
 		}
 	})
 
+	// EOD cleanup at midnight: delete reminders whose date has passed
+	c.AddFunc("0 0 * * *", func() {
+		log.Println("Running EOD reminder cleanup...")
+		if err := st.DeleteRemindersAtEOD(); err != nil {
+			log.Printf("Failed EOD reminder cleanup: %v", err)
+		} else {
+			log.Println("Successfully cleaned up past-due reminders")
+		}
+	})
+
 	c.Start()
 	defer c.Stop()
 

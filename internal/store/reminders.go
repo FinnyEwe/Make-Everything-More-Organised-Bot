@@ -41,8 +41,63 @@ func (s *Store) UpdateNotification(id uint, channel string) error {
 }
 
 func (s *Store) DeleteCompletedReminders() error {
-	// Delete reminders where both discord and gcal are true (fully processed)
-	err := s.Db.Where("discord = ? AND gcal = ?", true, true).
-		Delete(&model.Reminder{}).Error
-	return err
+	loc, err := time.LoadLocation("Australia/Sydney")
+	if err != nil {
+		return err
+	}
+	now := time.Now().In(loc)
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+
+	var reminders []model.Reminder
+	if err := s.Db.Find(&reminders).Error; err != nil {
+		return err
+	}
+
+	for _, reminder := range reminders {
+		if reminder.Discord && reminder.Gcal {
+			if err := s.Db.Delete(&reminder).Error; err != nil {
+				return err
+			}
+			continue
+		}
+
+		day, err := time.ParseInLocation("02-01-2006", reminder.Date, loc)
+		if err != nil {
+			continue
+		}
+		if day.Before(today) {
+			if err := s.Db.Delete(&reminder).Error; err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Store) DeleteRemindersAtEOD() error {
+	loc, err := time.LoadLocation("Australia/Sydney")
+	if err != nil {
+		return err
+	}
+	now := time.Now().In(loc)
+	// 12:00 AM is the start of a new day; the day that just ended is yesterday.
+	ended := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -1)
+
+	var reminders []model.Reminder
+	if err := s.Db.Find(&reminders).Error; err != nil {
+		return err
+	}
+
+	for _, reminder := range reminders {
+		day, err := time.ParseInLocation("02-01-2006", reminder.Date, loc)
+		if err != nil {
+			continue
+		}
+		if !ended.Before(day) {
+			if err := s.Db.Delete(&reminder).Error; err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
